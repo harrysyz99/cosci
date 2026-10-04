@@ -48,6 +48,20 @@ try {
     Expand-Archive -Path $zip -DestinationPath $tmp -Force
     $package = Get-ChildItem $tmp -Directory | Where-Object { $_.Name -like 'cosci-*' } | Select-Object -First 1
     New-Item -ItemType Directory -Force -Path $installDir | Out-Null
+    # A running cosci.exe (for example during `cosci update`) cannot be
+    # overwritten but can be renamed, so move existing programs aside first.
+    Get-ChildItem $package.FullName -Recurse -Filter '*.exe' | ForEach-Object {
+        $target = Join-Path $installDir $_.FullName.Substring($package.FullName.Length).TrimStart('\')
+        if (Test-Path $target) {
+            $old = "$target.old"
+            Remove-Item $old -Force -ErrorAction SilentlyContinue
+            if (Test-Path $old) {
+                # An older copy is still running; set this one aside under a fresh name.
+                $old = "$target.$([guid]::NewGuid()).old"
+            }
+            Rename-Item $target (Split-Path $old -Leaf)
+        }
+    }
     Copy-Item -Path (Join-Path $package.FullName '*') -Destination $installDir -Recurse -Force
 } finally {
     Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue

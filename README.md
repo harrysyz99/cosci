@@ -26,6 +26,10 @@ irm https://raw.githubusercontent.com/harrysyz99/cosci/main/install.ps1 | iex
 - 这些版本没有代码签名。在 macOS 上用浏览器下载时，要先运行 `xattr -d com.apple.quarantine cosci` 才能打开；Windows 第一次运行可能弹出 SmartScreen 提示，选择"仍要运行"。用上面的安装脚本安装通常不会遇到这些提示。
 - 不要装到 `~/.cosci/packages/` 下面。
 
+## 更新
+
+cosci 启动时会检查有没有新版本（每天最多一次），有的话交互界面会提示，选择更新即可；也可以随时运行 `cosci update`。2026.10.04 及更早的版本还没有这个功能，需要重新运行一次上面的安装命令。
+
 ## 登录
 
 ```sh
@@ -128,6 +132,8 @@ The scripts download the latest release and verify its sha256. To install by han
 **Sign in** with `cosci login` (ChatGPT account in a browser), `cosci login --device-auth` (over SSH), or `printenv OPENAI_API_KEY | cosci login --with-api-key`. You need an OpenAI account and network access to OpenAI; set `HTTPS_PROXY` if you use a proxy.
 
 **Your own model endpoint.** Any endpoint that implements the OpenAI Responses API (`POST /v1/responses` with streaming) works without a ChatGPT sign-in: add a `[model_providers.<id>]` table with `base_url`, `env_key` (the variable holding your API key), and `wire_api = "responses"`, then set `model_provider` and `model` (see the TOML above). The Chat Completions API is not supported; put a Responses API gateway in front of chat-only endpoints.
+
+**Updates.** cosci checks for a new release at startup (at most once a day) and offers to update in the TUI; `cosci update` updates at any time. Versions 2026.10.04 and earlier lack this, so rerun the installer once.
 
 **WebDAV mirroring.** cosci can copy each conversation and its audit transcript to a WebDAV folder (`/cloud` in the TUI, or `[transcript_cloud]` in `config.toml` as above). Local files stay the source of truth.
 

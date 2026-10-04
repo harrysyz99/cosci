@@ -27,7 +27,7 @@ jobs:
       - name: Run cosci
         run: |
           set -eu
-          ~/.local/bin/cosci --version
+          ~/.local/bin/cosci --version | grep -E '^cosci [0-9]{4}\.'
           ~/.local/bin/cosci --help | head -n 3
       - name: Allow unprivileged user namespaces for bubblewrap
         if: runner.os == 'Linux'
@@ -36,6 +36,11 @@ jobs:
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
       - name: Run a command in the sandbox
         run: ~/.local/bin/cosci sandbox -- /bin/echo "sandbox ok"
+      - name: Update in place
+        run: |
+          set -eu
+          ~/.local/bin/cosci update
+          ~/.local/bin/cosci --version
 
   windows:
     name: install.ps1 on windows-latest
@@ -51,14 +56,22 @@ jobs:
         shell: pwsh
         run: |
           $cosci = Join-Path $env:LOCALAPPDATA 'cosci\cosci.exe'
-          & $cosci --version
+          $version = & $cosci --version
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($version -notmatch '^cosci \d{4}\.') { throw "unexpected version: $version" }
           & $cosci --help | Select-Object -First 3
           foreach ($helper in 'codex-windows-sandbox-setup', 'codex-windows-sandbox-service', 'codex-command-runner') {
             $path = Join-Path $env:LOCALAPPDATA "cosci\codex-resources\$helper.exe"
             if (-not (Test-Path $path)) { throw "missing $path" }
           }
           Write-Host 'sandbox helpers present'
+      - name: Update in place while cosci.exe runs
+        shell: pwsh
+        run: |
+          $cosci = Join-Path $env:LOCALAPPDATA 'cosci\cosci.exe'
+          & $cosci update
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $cosci --version
       - name: Install with Windows PowerShell 5.1
         shell: powershell
         run: |
