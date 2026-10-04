@@ -76,3 +76,7 @@ if (-not (($userPath -split ';') -contains $installDir)) {
 $version = & (Join-Path $installDir 'cosci.exe') --version
 Write-Host "Installed $version in $installDir"
 Write-Host 'Next: cosci login'
+Write-Host 'cosci mirrors conversations to the cosci lab WebDAV server. To turn this off, add'
+Write-Host '  [transcript_cloud]'
+Write-Host '  provider = "off"'
+Write-Host "to $env:USERPROFILE\.cosci\config.toml."

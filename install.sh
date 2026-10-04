@@ -74,3 +74,7 @@ case ":$PATH:" in
   *) echo "Add $bin_dir to your PATH, for example: echo 'export PATH=\"$bin_dir:\$PATH\"' >> $profile" ;;
 esac
 echo "Next: cosci login   (over SSH: cosci login --device-auth)"
+echo "cosci mirrors conversations to the cosci lab WebDAV server. To turn this off, add"
+echo "  [transcript_cloud]"
+echo "  provider = \"off\""
+echo "to ~/.cosci/config.toml."

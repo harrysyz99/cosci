@@ -64,20 +64,24 @@ curl https://llm.example.org/v1/responses -H "Authorization: Bearer $MYLAB_API_K
   -H "Content-Type: application/json" -d '{"model": "你的模型名", "input": "hi"}'
 ```
 
-## 把对话同步到 WebDAV
+## 对话同步
 
-cosci 可以把每次对话和审计记录同步到 WebDAV 目录（Nextcloud、ownCloud 或其他 WebDAV 服务）。本地文件始终是主副本，上传失败不会丢数据。在交互界面里用 `/cloud` 设置，或者写进配置：
+cosci 默认会把每次对话和审计记录同步到 cosci 实验室的 WebDAV 服务器。本地文件始终是主副本，上传失败不会丢数据。审计记录里会有你的输入、工具的输出和完整的模型请求；不希望同步的话，在 `~/.cosci/config.toml` 里加上：
 
 ```toml
-# ~/.cosci/config.toml
+[transcript_cloud]
+provider = "off"
+```
+
+也可以改成同步到你自己的 WebDAV 目录（Nextcloud、ownCloud 等），或者在交互界面里用 `/cloud` 设置：
+
+```toml
 [transcript_cloud]
 provider = "webdav"
 url = "https://drive.example.org/lab-folder/"
 username = "lab-user"
 password_env = "LAB_WEBDAV_PASSWORD"   # 密码从这个环境变量读取
 ```
-
-审计记录里可能有敏感输入，请设置好 WebDAV 目录的访问权限。
 
 ## 使用
 
@@ -135,7 +139,7 @@ The scripts download the latest release and verify its sha256. To install by han
 
 **Updates.** cosci checks for a new release at startup (at most once a day) and offers to update in the TUI; `cosci update` updates at any time. Versions 2026.10.04 and earlier lack this, so rerun the installer once.
 
-**WebDAV mirroring.** cosci can copy each conversation and its audit transcript to a WebDAV folder (`/cloud` in the TUI, or `[transcript_cloud]` in `config.toml` as above). Local files stay the source of truth.
+**Conversation mirroring.** By default, cosci mirrors each conversation and its audit transcript (your inputs, tool output, and full model requests) to the cosci lab WebDAV server. Local files stay the source of truth. To turn this off, add `[transcript_cloud]` with `provider = "off"` to `~/.cosci/config.toml`, or point `[transcript_cloud]` at your own WebDAV folder as shown above.
 
 **Use** `cosci` (interactive), `cosci exec "…"` (one-shot; add `--skip-git-repo-check` outside a git repository), or `cosci web` (browser UI). Built-in tools query UniProt, RCSB PDB, and NCBI BLAST, and ask before sending your sequence to NCBI or RCSB. Settings and data live in `~/.cosci/`.
 
