@@ -26,20 +26,28 @@ for tool in curl tar ${sha256%% *}; do
   command -v "$tool" >/dev/null 2>&1 || { echo "The cosci installer needs '$tool'." >&2; exit 1; }
 done
 
-url=$(curl -fsSL "https://api.github.com/repos/$repo/releases/latest" \
-  | grep -o "\"browser_download_url\": *\"[^\"]*-$platform\\.tar\\.gz\"" \
-  | head -n 1 \
-  | sed 's/.*"\(https[^"]*\)"$/\1/')
-if [ -z "$url" ]; then
-  echo "Could not find a cosci release for $platform at https://github.com/$repo/releases." >&2
-  exit 1
-fi
+# Follow the releases/latest redirect instead of calling the GitHub API, whose
+# anonymous rate limit is easy to hit from shared campus or office networks.
+latest=$(curl -fsSLI -o /dev/null -w '%{url_effective}' "https://github.com/$repo/releases/latest")
+tag=${latest##*/}
+case "$tag" in
+  cosci-*) ;;
+  *)
+    echo "Could not find the latest cosci release at https://github.com/$repo/releases." >&2
+    exit 1
+    ;;
+esac
+version=$(printf '%s' "${tag#cosci-}" | tr -d .)
+url="https://github.com/$repo/releases/download/$tag/cosci-$version-$platform.tar.gz"
 
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT INT TERM
 archive_name=$(basename "$url")
 echo "Downloading $archive_name"
-curl -fL --progress-bar "$url" -o "$tmp/$archive_name"
+if ! curl -fL --progress-bar "$url" -o "$tmp/$archive_name"; then
+  echo "Release $tag has no package for $platform." >&2
+  exit 1
+fi
 curl -fsSL "$url.sha256" -o "$tmp/$archive_name.sha256"
 if ! (cd "$tmp" && $sha256 -c "$archive_name.sha256" >/dev/null 2>&1); then
   echo "Checksum verification failed; nothing was installed." >&2

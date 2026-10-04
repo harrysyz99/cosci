@@ -59,3 +59,10 @@ jobs:
             if (-not (Test-Path $path)) { throw "missing $path" }
           }
           Write-Host 'sandbox helpers present'
+      - name: Install with Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          $env:COSCI_INSTALL_DIR = Join-Path $env:RUNNER_TEMP 'cosci-ps51'
+          ./install.ps1
+          & (Join-Path $env:COSCI_INSTALL_DIR 'cosci.exe') --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

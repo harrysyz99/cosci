@@ -14,20 +14,33 @@ if ($env:PROCESSOR_ARCHITECTURE -ne 'AMD64') {
     throw "cosci for Windows supports x86_64 only (this machine: $env:PROCESSOR_ARCHITECTURE)."
 }
 
-$release = Invoke-RestMethod -UseBasicParsing "https://api.github.com/repos/$repo/releases/latest"
-$asset = $release.assets | Where-Object { $_.name -like '*-x86_64-windows.zip' } | Select-Object -First 1
-if (-not $asset) {
-    throw "Could not find a cosci release for x86_64 Windows at https://github.com/$repo/releases."
+# Follow the releases/latest redirect instead of calling the GitHub API, whose
+# anonymous rate limit is easy to hit from shared campus or office networks.
+$latest = Invoke-WebRequest -UseBasicParsing -Method Head "https://github.com/$repo/releases/latest"
+$latestUri = if ($latest.BaseResponse.ResponseUri) {
+    $latest.BaseResponse.ResponseUri.AbsoluteUri          # Windows PowerShell 5.1
+} else {
+    $latest.BaseResponse.RequestMessage.RequestUri.AbsoluteUri  # PowerShell 7
 }
-$checksumAsset = $release.assets | Where-Object { $_.name -eq "$($asset.name).sha256" } | Select-Object -First 1
+$tag = $latestUri.TrimEnd('/').Split('/')[-1]
+if (-not $tag.StartsWith('cosci-')) {
+    throw "Could not find the latest cosci release at https://github.com/$repo/releases."
+}
+$version = $tag.Substring('cosci-'.Length).Replace('.', '')
+$archiveName = "cosci-$version-x86_64-windows.zip"
+$downloadBase = "https://github.com/$repo/releases/download/$tag"
 
 $tmp = Join-Path ([System.IO.Path]::GetTempPath()) ("cosci-" + [guid]::NewGuid())
 New-Item -ItemType Directory -Path $tmp | Out-Null
 try {
-    $zip = Join-Path $tmp $asset.name
-    Write-Host "Downloading $($asset.name)"
-    Invoke-WebRequest -UseBasicParsing $asset.browser_download_url -OutFile $zip
-    Invoke-WebRequest -UseBasicParsing $checksumAsset.browser_download_url -OutFile "$zip.sha256"
+    $zip = Join-Path $tmp $archiveName
+    Write-Host "Downloading $archiveName"
+    try {
+        Invoke-WebRequest -UseBasicParsing "$downloadBase/$archiveName" -OutFile $zip
+    } catch {
+        throw "Release $tag has no package for x86_64 Windows."
+    }
+    Invoke-WebRequest -UseBasicParsing "$downloadBase/$archiveName.sha256" -OutFile "$zip.sha256"
     $expected = ((Get-Content "$zip.sha256" -Raw).Trim() -split '\s+')[0]
     if ((Get-FileHash $zip -Algorithm SHA256).Hash -ne $expected) {
         throw 'Checksum verification failed; nothing was installed.'
