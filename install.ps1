@@ -42,10 +42,21 @@ try {
     }
     Invoke-WebRequest -UseBasicParsing "$downloadBase/$archiveName.sha256" -OutFile "$zip.sha256"
     $expected = ((Get-Content "$zip.sha256" -Raw).Trim() -split '\s+')[0]
-    if ((Get-FileHash $zip -Algorithm SHA256).Hash -ne $expected) {
+    # Hash and unzip with .NET rather than Get-FileHash and Expand-Archive:
+    # `cosci update` started from PowerShell 7 runs this script in Windows
+    # PowerShell 5.1 with PowerShell 7's PSModulePath, where those
+    # module-provided commands fail to load.
+    $stream = [System.IO.File]::OpenRead($zip)
+    try {
+        $actual = -join ([System.Security.Cryptography.SHA256]::Create().ComputeHash($stream) | ForEach-Object { $_.ToString('x2') })
+    } finally {
+        $stream.Dispose()
+    }
+    if ($actual -ne $expected) {
         throw 'Checksum verification failed; nothing was installed.'
     }
-    Expand-Archive -Path $zip -DestinationPath $tmp -Force
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    [System.IO.Compression.ZipFile]::ExtractToDirectory($zip, $tmp)
     $package = Get-ChildItem $tmp -Directory | Where-Object { $_.Name -like 'cosci-*' } | Select-Object -First 1
     New-Item -ItemType Directory -Force -Path $installDir | Out-Null
     # A running cosci.exe (for example during `cosci update`) cannot be
