@@ -1,5 +1,5 @@
 #!/bin/sh
-# Installs the latest cosci release for x86_64 Linux.
+# Installs the latest cosci release for x86_64 Linux or macOS.
 #
 #   curl -fsSL https://raw.githubusercontent.com/harrysyz99/cosci/main/install.sh | sh
 #
@@ -12,23 +12,26 @@ install_dir="${COSCI_INSTALL_DIR:-$HOME/.local/lib/cosci}"
 bin_dir="${COSCI_BIN_DIR:-$HOME/.local/bin}"
 
 case "$(uname -s)-$(uname -m)" in
-  Linux-x86_64) ;;
+  Linux-x86_64) platform="x86_64-linux"; sha256="sha256sum" ;;
+  Darwin-arm64) platform="aarch64-macos"; sha256="shasum -a 256" ;;
+  Darwin-x86_64) platform="x86_64-macos"; sha256="shasum -a 256" ;;
   *)
-    echo "cosci currently supports x86_64 Linux only (this machine: $(uname -s) $(uname -m))." >&2
+    echo "cosci supports x86_64 Linux and macOS (this machine: $(uname -s) $(uname -m))." >&2
+    echo "On Windows, run: irm https://raw.githubusercontent.com/$repo/main/install.ps1 | iex" >&2
     exit 1
     ;;
 esac
 
-for tool in curl tar sha256sum; do
+for tool in curl tar ${sha256%% *}; do
   command -v "$tool" >/dev/null 2>&1 || { echo "The cosci installer needs '$tool'." >&2; exit 1; }
 done
 
 url=$(curl -fsSL "https://api.github.com/repos/$repo/releases/latest" \
-  | grep -o '"browser_download_url": *"[^"]*x86_64-linux\.tar\.gz"' \
+  | grep -o "\"browser_download_url\": *\"[^\"]*-$platform\\.tar\\.gz\"" \
   | head -n 1 \
   | sed 's/.*"\(https[^"]*\)"$/\1/')
 if [ -z "$url" ]; then
-  echo "Could not find a cosci release for x86_64 Linux at https://github.com/$repo/releases." >&2
+  echo "Could not find a cosci release for $platform at https://github.com/$repo/releases." >&2
   exit 1
 fi
 
@@ -38,7 +41,7 @@ archive_name=$(basename "$url")
 echo "Downloading $archive_name"
 curl -fL --progress-bar "$url" -o "$tmp/$archive_name"
 curl -fsSL "$url.sha256" -o "$tmp/$archive_name.sha256"
-if ! (cd "$tmp" && sha256sum -c "$archive_name.sha256" >/dev/null 2>&1); then
+if ! (cd "$tmp" && $sha256 -c "$archive_name.sha256" >/dev/null 2>&1); then
   echo "Checksum verification failed; nothing was installed." >&2
   exit 1
 fi
@@ -49,12 +52,17 @@ package=$(find "$tmp" -mindepth 1 -maxdepth 1 -type d -name 'cosci-*' | head -n 
 mkdir -p "$install_dir" "$bin_dir"
 cp "$package/cosci" "$install_dir/cosci.new"
 mv "$install_dir/cosci.new" "$install_dir/cosci"
-cp -R "$package/codex-resources" "$install_dir/"
+# Linux packages carry the bubblewrap sandbox; macOS uses the system sandbox.
+if [ -d "$package/codex-resources" ]; then
+  cp -R "$package/codex-resources" "$install_dir/"
+fi
 ln -sf "$install_dir/cosci" "$bin_dir/cosci"
 
 echo "Installed $("$install_dir/cosci" --version) in $install_dir"
+profile="$HOME/.bashrc"
+[ "$(uname -s)" = Darwin ] && profile="$HOME/.zshrc"
 case ":$PATH:" in
   *":$bin_dir:"*) ;;
-  *) echo "Add $bin_dir to your PATH, for example: echo 'export PATH=\"$bin_dir:\$PATH\"' >> ~/.bashrc" ;;
+  *) echo "Add $bin_dir to your PATH, for example: echo 'export PATH=\"$bin_dir:\$PATH\"' >> $profile" ;;
 esac
 echo "Next: cosci login   (over SSH: cosci login --device-auth)"

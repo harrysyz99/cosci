@@ -6,25 +6,25 @@ cosci 是面向科研的 AI 助手：读写你的数据和代码、跑分析和�
 
 ## 安装
 
-支持任意 x86_64 Linux（静态编译，不依赖系统库）：Ubuntu、Debian、CentOS/RHEL、各类计算集群都可以。暂不支持 macOS、Windows 和 ARM。
+**Linux（x86_64，任意发行版）和 macOS（Apple 芯片或 Intel）**
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/harrysyz99/cosci/main/install.sh | sh
 ```
 
-脚本会下载最新版本，校验 sha256，把程序装到 `~/.local/lib/cosci`，并在 `~/.local/bin` 建一个 `cosci` 链接。
+**Windows（x86_64，在 PowerShell 里运行）**
 
-也可以手动安装：在 [Releases](https://github.com/harrysyz99/cosci/releases) 下载 `cosci-*-x86_64-linux.tar.gz`，然后：
-
-```sh
-tar -xzf cosci-*-x86_64-linux.tar.gz
-cd cosci-*-x86_64-linux
-mkdir -p ~/.local/lib/cosci ~/.local/bin
-cp -r cosci codex-resources ~/.local/lib/cosci/
-ln -sf ~/.local/lib/cosci/cosci ~/.local/bin/cosci
+```powershell
+irm https://raw.githubusercontent.com/harrysyz99/cosci/main/install.ps1 | iex
 ```
 
-`codex-resources/bwrap` 是运行命令时用的沙箱，必须和 `cosci` 放在同一个目录。不要装到 `~/.cosci/packages/` 下面。
+安装脚本会下载最新版本并校验 sha256。Linux 和 macOS 装到 `~/.local/lib/cosci`，并在 `~/.local/bin` 建一个 `cosci` 链接；Windows 装到 `%LOCALAPPDATA%\cosci`，并加进用户 PATH。暂不支持 ARM 版 Linux 和 Windows。
+
+也可以在 [Releases](https://github.com/harrysyz99/cosci/releases) 手动下载对应平台的压缩包，里面的 `README.md` 有手动安装步骤。注意：
+
+- Linux 包里的 `codex-resources/bwrap`、Windows 包里的 `codex-resources\` 是运行命令用的沙箱，必须和程序放在同一个目录。
+- 这些版本没有代码签名。在 macOS 上用浏览器下载时，要先运行 `xattr -d com.apple.quarantine cosci` 才能打开；Windows 第一次运行可能弹出 SmartScreen 提示，选择"仍要运行"。用上面的安装脚本安装通常不会遇到这些提示。
+- 不要装到 `~/.cosci/packages/` 下面。
 
 ## 登录
 
@@ -55,8 +55,10 @@ cosci web                      # 浏览器界面
 ## 卸载
 
 ```sh
-rm -rf ~/.local/lib/cosci ~/.local/bin/cosci   # 再删掉 ~/.cosci 会清除设置和会话记录
+rm -rf ~/.local/lib/cosci ~/.local/bin/cosci   # Linux、macOS；再删掉 ~/.cosci 会清除设置和会话记录
 ```
+
+Windows：删掉 `%LOCALAPPDATA%\cosci`，并从用户 PATH 里去掉它；`%USERPROFILE%\.cosci` 里是设置和会话记录。
 
 ## 许可证
 
@@ -70,13 +72,19 @@ Apache-2.0，见 [LICENSE](LICENSE)。cosci 基于开源的 OpenAI Codex CLI 开
 
 cosci is an AI co-scientist: it works with your data and code, runs analyses and experiments, searches literature and databases, and reports conclusions with evidence and uncertainty. This repository hosts binary releases.
 
-**Install** (any x86_64 Linux; the build is static and needs no system libraries; no macOS, Windows, or ARM builds yet):
+**Install.** Linux (x86_64, any distribution) and macOS (Apple silicon or Intel):
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/harrysyz99/cosci/main/install.sh | sh
 ```
 
-The script downloads the latest release, verifies its sha256, installs it in `~/.local/lib/cosci`, and links `~/.local/bin/cosci`. To install by hand, download `cosci-*-x86_64-linux.tar.gz` from [Releases](https://github.com/harrysyz99/cosci/releases) and copy `cosci` and `codex-resources/` into the same directory. `codex-resources/bwrap` is the command sandbox.
+Windows (x86_64, in PowerShell):
+
+```powershell
+irm https://raw.githubusercontent.com/harrysyz99/cosci/main/install.ps1 | iex
+```
+
+The scripts download the latest release and verify its sha256. To install by hand, download your platform's archive from [Releases](https://github.com/harrysyz99/cosci/releases) and follow the README inside. Keep `codex-resources` (the command sandbox on Linux and Windows) next to the program. The builds are not code-signed: on macOS, run `xattr -d com.apple.quarantine cosci` after a browser download; on Windows, SmartScreen may warn on first run. The install scripts usually avoid both.
 
 **Sign in** with `cosci login` (ChatGPT account in a browser), `cosci login --device-auth` (over SSH), or `printenv OPENAI_API_KEY | cosci login --with-api-key`. You need an OpenAI account and network access to OpenAI; set `HTTPS_PROXY` if you use a proxy.
 

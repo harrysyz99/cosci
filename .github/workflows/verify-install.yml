@@ -1,0 +1,61 @@
+# Installs the latest release with the one-line installers on each supported
+# platform and runs cosci, so every published release is checked end to end.
+name: verify-install
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  unix:
+    name: install.sh on ${{ matrix.runner }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-latest, macos-15, macos-15-intel]
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Install
+        run: sh ./install.sh
+      - name: Run cosci
+        run: |
+          set -eu
+          ~/.local/bin/cosci --version
+          ~/.local/bin/cosci --help | head -n 3
+      - name: Allow unprivileged user namespaces for bubblewrap
+        if: runner.os == 'Linux'
+        run: |
+          sudo sysctl -w kernel.unprivileged_userns_clone=1 || true
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+      - name: Run a command in the sandbox
+        run: ~/.local/bin/cosci sandbox -- /bin/echo "sandbox ok"
+
+  windows:
+    name: install.ps1 on windows-latest
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Install
+        shell: pwsh
+        run: ./install.ps1
+      - name: Run cosci
+        shell: pwsh
+        run: |
+          $cosci = Join-Path $env:LOCALAPPDATA 'cosci\cosci.exe'
+          & $cosci --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $cosci --help | Select-Object -First 3
+          foreach ($helper in 'codex-windows-sandbox-setup', 'codex-windows-sandbox-service', 'codex-command-runner') {
+            $path = Join-Path $env:LOCALAPPDATA "cosci\codex-resources\$helper.exe"
+            if (-not (Test-Path $path)) { throw "missing $path" }
+          }
+          Write-Host 'sandbox helpers present'
