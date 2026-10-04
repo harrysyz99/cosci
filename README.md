@@ -36,6 +36,45 @@ printenv OPENAI_API_KEY | cosci login --with-api-key   # 或者用 OpenAI API ke
 
 需要 OpenAI 账号，以及能访问 OpenAI 的网络。需要代理的话，先设置 `HTTPS_PROXY`。
 
+## 使用自己的模型接口
+
+只要接口实现了 OpenAI 的 Responses API（`POST /v1/responses`，流式输出），就可以直接接入，不用登录 ChatGPT：
+
+```toml
+# ~/.cosci/config.toml
+model = "你的模型名"
+model_provider = "mylab"
+model_context_window = 128000   # cosci 不认识的模型，需要告诉它上下文长度
+
+[model_providers.mylab]
+name = "My lab endpoint"
+base_url = "https://llm.example.org/v1"
+env_key = "MYLAB_API_KEY"       # cosci 从这个环境变量读取 API key
+wire_api = "responses"
+```
+
+在终端里设置好 `MYLAB_API_KEY`，照常运行 `cosci` 即可。不支持 Chat Completions（`wire_api = "chat"`）：只提供 `/v1/chat/completions` 的接口，需要在前面加一个提供 Responses API 的网关。可以这样检查接口是否支持：
+
+```sh
+curl https://llm.example.org/v1/responses -H "Authorization: Bearer $MYLAB_API_KEY" \
+  -H "Content-Type: application/json" -d '{"model": "你的模型名", "input": "hi"}'
+```
+
+## 把对话同步到 WebDAV
+
+cosci 可以把每次对话和审计记录同步到 WebDAV 目录（Nextcloud、ownCloud 或其他 WebDAV 服务）。本地文件始终是主副本，上传失败不会丢数据。在交互界面里用 `/cloud` 设置，或者写进配置：
+
+```toml
+# ~/.cosci/config.toml
+[transcript_cloud]
+provider = "webdav"
+url = "https://drive.example.org/lab-folder/"
+username = "lab-user"
+password_env = "LAB_WEBDAV_PASSWORD"   # 密码从这个环境变量读取
+```
+
+审计记录里可能有敏感输入，请设置好 WebDAV 目录的访问权限。
+
 ## 使用
 
 ```sh
@@ -87,6 +126,10 @@ irm https://raw.githubusercontent.com/harrysyz99/cosci/main/install.ps1 | iex
 The scripts download the latest release and verify its sha256. To install by hand, download your platform's archive from [Releases](https://github.com/harrysyz99/cosci/releases) and follow the README inside. Keep `codex-resources` (the command sandbox on Linux and Windows) next to the program. The builds are not code-signed: on macOS, run `xattr -d com.apple.quarantine cosci` after a browser download; on Windows, SmartScreen may warn on first run. The install scripts usually avoid both.
 
 **Sign in** with `cosci login` (ChatGPT account in a browser), `cosci login --device-auth` (over SSH), or `printenv OPENAI_API_KEY | cosci login --with-api-key`. You need an OpenAI account and network access to OpenAI; set `HTTPS_PROXY` if you use a proxy.
+
+**Your own model endpoint.** Any endpoint that implements the OpenAI Responses API (`POST /v1/responses` with streaming) works without a ChatGPT sign-in: add a `[model_providers.<id>]` table with `base_url`, `env_key` (the variable holding your API key), and `wire_api = "responses"`, then set `model_provider` and `model` (see the TOML above). The Chat Completions API is not supported; put a Responses API gateway in front of chat-only endpoints.
+
+**WebDAV mirroring.** cosci can copy each conversation and its audit transcript to a WebDAV folder (`/cloud` in the TUI, or `[transcript_cloud]` in `config.toml` as above). Local files stay the source of truth.
 
 **Use** `cosci` (interactive), `cosci exec "…"` (one-shot; add `--skip-git-repo-check` outside a git repository), or `cosci web` (browser UI). Built-in tools query UniProt, RCSB PDB, and NCBI BLAST, and ask before sending your sequence to NCBI or RCSB. Settings and data live in `~/.cosci/`.
 
