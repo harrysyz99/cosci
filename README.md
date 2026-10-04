@@ -6,7 +6,7 @@ cosci 是面向科研的 AI 助手：读写你的数据和代码、跑分析和�
 
 ## 安装
 
-**Linux（x86_64，任意发行版）和 macOS（Apple 芯片或 Intel）**
+**Linux（x86_64，任意发行版）和 macOS（M 系列芯片 M1/M2/M3/M4，或 Intel 芯片）**
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/harrysyz99/cosci/main/install.sh | sh
@@ -111,7 +111,7 @@ Apache-2.0，见 [LICENSE](LICENSE)。cosci 基于开源的 OpenAI Codex CLI 开
 
 cosci is an AI co-scientist: it works with your data and code, runs analyses and experiments, searches literature and databases, and reports conclusions with evidence and uncertainty. This repository hosts binary releases.
 
-**Install.** Linux (x86_64, any distribution) and macOS (Apple silicon or Intel):
+**Install.** Linux (x86_64, any distribution) and macOS (M-series chips M1/M2/M3/M4, or Intel):
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/harrysyz99/cosci/main/install.sh | sh
